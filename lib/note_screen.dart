@@ -29,6 +29,11 @@ class _NoteScreenState extends State<NoteScreen> {
     setState(() {});
   }
 
+  Future<void> _loadTrashNotes() async {
+    notes = await _dbHelper.getTrashNotes();
+    setState(() {});
+  }
+
   Future<void> _loadCategories() async {
     categories = await _dbHelper.getCategories();
     setState(() {});
@@ -45,8 +50,7 @@ class _NoteScreenState extends State<NoteScreen> {
           decoration: InputDecoration(labelText: 'Tên danh mục'),
         ),
         actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(context), child: Text('Hủy')),
+          TextButton(onPressed: () => Navigator.pop(context), child: Text('Hủy')),
           TextButton(
             onPressed: () async {
               await _dbHelper.addCategory(_controller.text);
@@ -81,13 +85,35 @@ class _NoteScreenState extends State<NoteScreen> {
     }
   }
 
-  Future<void> _deleteNote(int id) async {
-    await _dbHelper.deleteNote(id);
+  Future<void> _deleteNoteToTrash(int id) async {
+    await _dbHelper.deleteNoteToTrash(id);
     await _loadData();
+  }
+
+  Future<void> _deleteNotePermanently(int id) async {
+    await _dbHelper.deleteNotePermanently(id);
+    await _loadTrashNotes();
+  }
+
+  Future<void> _restoreNote(int id, int categoryId) async {
+    await _dbHelper.restoreNote(id, categoryId);
+    await _loadTrashNotes();
   }
 
   @override
   Widget build(BuildContext context) {
+    // Lọc ghi chú theo danh mục và tìm kiếm
+    List<Map<String, dynamic>> filteredNotes = notes.where((note) {
+      bool matchesCategory = true;
+      bool matchesSearch = note['title'].toLowerCase().contains(searchText.toLowerCase());
+
+      if (selectedCategory != null && selectedCategory != 'trash') {
+        matchesCategory = note['category_id'].toString() == selectedCategory;
+      }
+
+      return matchesCategory && matchesSearch;
+    }).toList();
+
     return Scaffold(
       appBar: AppBar(
         title: Text('Ghi chú'),
@@ -107,9 +133,49 @@ class _NoteScreenState extends State<NoteScreen> {
       drawer: Drawer(
         child: ListView(
           children: [
-            DrawerHeader(
-              child: Text('Danh mục'),
-              decoration: BoxDecoration(color: Colors.blue),
+            SizedBox(
+              height: 75, // Đặt chiều cao theo mong muốn
+              child: DrawerHeader(
+                child: Text(
+                  'One Note',
+                  style: TextStyle(
+                    fontSize: 25,
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [Color(0xFFFF5E8A), Color(0xFF8A2BE2)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                ),
+                margin: EdgeInsets.zero,
+              ),
+            ),
+            ListTile(
+              leading: Icon(Icons.all_inclusive),
+              title: Text('Tất cả ghi chú'),
+              onTap: () {
+                setState(() {
+                  selectedCategory = null;
+                });
+                Navigator.pop(context);
+                _loadData();
+              },
+            ),
+
+            ListTile(
+              leading: Icon(Icons.delete),
+              title: Text('Thùng rác'),
+              onTap: () {
+                setState(() {
+                  selectedCategory = 'trash';
+                });
+                Navigator.pop(context);
+                _loadTrashNotes();
+              },
             ),
             ListTile(
               leading: Icon(Icons.manage_accounts),
@@ -124,16 +190,6 @@ class _NoteScreenState extends State<NoteScreen> {
                   ),
                 );
                 _loadCategories();
-              },
-            ),
-            ListTile(
-              leading: Icon(Icons.all_inclusive),
-              title: Text('Tất cả ghi chú'),
-              onTap: () {
-                setState(() {
-                  selectedCategory = null;
-                });
-                Navigator.pop(context);
               },
             ),
             ...categories.map((category) {
@@ -162,9 +218,27 @@ class _NoteScreenState extends State<NoteScreen> {
             child: TextField(
               decoration: InputDecoration(
                 hintText: 'Tìm kiếm ghi chú...',
-                prefixIcon: Icon(Icons.search),
+                prefixIcon: Icon(Icons.search, color: Colors.grey),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide(
+                    color: Color(0xFFFF5E8A), // Màu viền hồng
+                    width: 2.0, // Độ dày viền
+                  ),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide(
+                    color: Color(0xFFFF5E8A), // Màu viền khi không focus (hồng)
+                    width: 2.0,
+                  ),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide(
+                    color: Color(0xFF8A2BE2), // Màu viền khi focus (tím)
+                    width: 2.0,
+                  ),
                 ),
               ),
               onChanged: (value) {
@@ -183,29 +257,15 @@ class _NoteScreenState extends State<NoteScreen> {
                 mainAxisSpacing: 8.0,
                 childAspectRatio: 1,
               ),
-              itemCount: notes
-                  .where((note) =>
-              (selectedCategory == null ||
-                  note['category_id'].toString() == selectedCategory) &&
-                  (searchText.isEmpty ||
-                      note['title']
-                          .toLowerCase()
-                          .contains(searchText.toLowerCase())))
-                  .length,
+              itemCount: filteredNotes.length,
               itemBuilder: (context, index) {
-                final filteredNotes = notes
-                    .where((note) =>
-                (selectedCategory == null ||
-                    note['category_id'].toString() ==
-                        selectedCategory) &&
-                    (searchText.isEmpty ||
-                        note['title']
-                            .toLowerCase()
-                            .contains(searchText.toLowerCase())))
-                    .toList();
                 final note = filteredNotes[index];
-                final categoryName = categories.firstWhere((cat) =>
-                cat['id'].toString() == note['category_id'].toString())['name'];
+                String categoryName = 'Không xác định'; // Mặc định
+                try {
+                  categoryName = categories.firstWhere((cat) => cat['id'] == note['category_id'])['name'];
+                } catch (e) {
+                  // Xử lý nếu không tìm thấy danh mục
+                }
 
                 return GestureDetector(
                   onTap: () {
@@ -246,16 +306,25 @@ class _NoteScreenState extends State<NoteScreen> {
                         Spacer(),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.end,
-                          children: [
+                          children: selectedCategory == 'trash'
+                              ? [
+                            IconButton(
+                              icon: Icon(Icons.restore, color: Colors.white,),
+                              onPressed: () => _restoreNote(note['id'], note['category_id']),
+                            ),
+                            IconButton(
+                              icon: Icon(Icons.delete_forever, color: Colors.white),
+                              onPressed: () => _deleteNotePermanently(note['id']),
+                            ),
+                          ]
+                              : [
                             IconButton(
                               icon: Icon(Icons.edit, color: Colors.white),
                               onPressed: () => _addOrEditNote(note: note),
                             ),
                             IconButton(
                               icon: Icon(Icons.delete, color: Colors.white),
-                              onPressed: () async {
-                                await _deleteNote(note['id']);
-                              },
+                              onPressed: () => _deleteNoteToTrash(note['id']),
                             ),
                           ],
                         ),
@@ -268,9 +337,23 @@ class _NoteScreenState extends State<NoteScreen> {
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton(
-        child: Icon(Icons.add),
-        onPressed: () => _addOrEditNote(),
+      floatingActionButton: Container(
+        height: 56, // Kích thước chiều cao của FAB
+        width: 56, // Kích thước chiều rộng của FAB
+        decoration: BoxDecoration(
+          shape: BoxShape.circle, // Đảm bảo FAB có hình tròn
+          gradient: LinearGradient(
+            colors: [Color(0xFFFF5E8A), Color(0xFF8A2BE2)], // Gradient hồng -> tím
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+        ),
+        child: FloatingActionButton(
+          onPressed: () => _addOrEditNote(),
+          backgroundColor: Colors.transparent, // Đặt màu nền trong suốt
+          elevation: 0, // Loại bỏ bóng (nếu muốn)
+          child: Icon(Icons.add, color: Colors.white), // Icon màu trắng
+        ),
       ),
     );
   }

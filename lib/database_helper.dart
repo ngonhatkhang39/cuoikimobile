@@ -14,12 +14,21 @@ class DatabaseHelper {
     _database = await _initDatabase();
     return _database!;
   }
+  Future<void> deleteNoteToTrash(int id) async {
+    final db = await database;
 
+    await db.update(
+      'notes', // Tên bảng
+      {'is_deleted': 1}, // Cập nhật trường 'is_deleted' thành 1
+      where: 'id = ?', // Điều kiện lọc ghi chú theo id
+      whereArgs: [id], // Giá trị id
+    );
+  }
   Future<Database> _initDatabase() async {
-    String path = join(await getDatabasesPath(), 'note_app.db');
+    String path = join(await getDatabasesPath(), 'note_app1.db');
     return await openDatabase(
       path,
-      version: 1,
+      version: 2,
       onCreate: (db, version) async {
         await db.execute('''
           CREATE TABLE categories (
@@ -34,9 +43,17 @@ class DatabaseHelper {
             content TEXT,
             color TEXT,
             category_id INTEGER,
+            is_deleted INTEGER DEFAULT 0,
             FOREIGN KEY (category_id) REFERENCES categories (id)
           )
         ''');
+
+        await db.insert('categories', {'name': 'Thùng rác'});
+      },
+      onUpgrade: (db, oldVersion, newVersion) async {
+        if (oldVersion < 2) {
+          await db.execute('ALTER TABLE notes ADD COLUMN is_deleted INTEGER DEFAULT 0');
+        }
       },
     );
   }
@@ -50,10 +67,12 @@ class DatabaseHelper {
     final db = await database;
     return await db.insert('categories', {'name': name});
   }
+
   Future<int> updateCategory(int id, Map<String, dynamic> category) async {
     final db = await database;
     return await db.update('categories', category, where: 'id = ?', whereArgs: [id]);
   }
+
   Future<int> deleteCategory(int id) async {
     final db = await database;
     return await db.delete('categories', where: 'id = ?', whereArgs: [id]);
@@ -61,7 +80,12 @@ class DatabaseHelper {
 
   Future<List<Map<String, dynamic>>> getNotes() async {
     final db = await database;
-    return await db.query('notes');
+    return await db.query('notes', where: 'is_deleted = 0');
+  }
+
+  Future<List<Map<String, dynamic>>> getTrashNotes() async {
+    final db = await database;
+    return await db.query('notes', where: 'is_deleted = 1');
   }
 
   Future<int> addNote(Map<String, dynamic> note) async {
@@ -75,6 +99,19 @@ class DatabaseHelper {
   }
 
   Future<int> deleteNote(int id) async {
+    final db = await database;
+    return await db.update('notes', {'is_deleted': 1}, where: 'id = ?', whereArgs: [id]);
+  }
+
+  Future<int> restoreNote(int id, int categoryId) async {
+    final db = await database;
+    return await db.update('notes', {
+      'is_deleted': 0,
+      'category_id': categoryId,
+    }, where: 'id = ?', whereArgs: [id]);
+  }
+
+  Future<int> deleteNotePermanently(int id) async {
     final db = await database;
     return await db.delete('notes', where: 'id = ?', whereArgs: [id]);
   }
