@@ -157,30 +157,26 @@ class _NoteScreenState extends State<NoteScreen> {
             ListTile(
               leading: Icon(Icons.all_inclusive),
               title: Text('Tất cả ghi chú'),
+              tileColor: selectedCategory == null ? Color(0xFFFFBCCF) : null, // Màu khi được chọn
+              hoverColor: Color(0xFFFFBCCF).withOpacity(0.5), // Màu hover
               onTap: () {
                 setState(() {
-                  selectedCategory = null;
+                  selectedCategory = null; // Đánh dấu được chọn
                 });
                 Navigator.pop(context);
                 _loadData();
               },
             ),
-
-            ListTile(
-              leading: Icon(Icons.delete),
-              title: Text('Thùng rác'),
-              onTap: () {
-                setState(() {
-                  selectedCategory = 'trash';
-                });
-                Navigator.pop(context);
-                _loadTrashNotes();
-              },
-            ),
+            Divider(thickness: 1.0, color: Colors.grey), // Đường kẻ trên
             ListTile(
               leading: Icon(Icons.manage_accounts),
               title: Text('Quản lý danh mục'),
+              tileColor: selectedCategory == 'manage' ? Color(0xFFFFBCCF) : null, // Màu khi được chọn
+              hoverColor: Color(0xFFFFBCCF).withOpacity(0.5), // Màu hover
               onTap: () async {
+                setState(() {
+                  selectedCategory = 'manage'; // Đánh dấu mục được chọn
+                });
                 await Navigator.push(
                   context,
                   MaterialPageRoute(
@@ -194,7 +190,12 @@ class _NoteScreenState extends State<NoteScreen> {
             ),
             ...categories.map((category) {
               return ListTile(
+                leading: Icon(Icons.label_outline),
                 title: Text(category['name']),
+                tileColor: selectedCategory == category['id'].toString()
+                    ? Color(0xFFFFBCCF) // Màu khi danh mục này được chọn
+                    : null,
+                hoverColor: Color(0xFFFFBCCF).withOpacity(0.5), // Màu hover
                 onTap: () {
                   setState(() {
                     selectedCategory = category['id'].toString();
@@ -206,8 +207,26 @@ class _NoteScreenState extends State<NoteScreen> {
             ListTile(
               leading: Icon(Icons.add),
               title: Text('Thêm danh mục'),
+              tileColor: null, // Không cần màu khi được chọn
+              hoverColor: Color(0xFFFFBCCF).withOpacity(0.5), // Màu hover
               onTap: () => _addCategory(context),
             ),
+            Divider(thickness: 1.0, color: Colors.grey),
+            ListTile(
+              leading: Icon(Icons.delete),
+              title: Text('Thùng rác'),
+              tileColor: selectedCategory == 'trash' ? Color(0xFFFFBCCF) : null, // Màu khi được chọn
+              hoverColor: Color(0xFFFFBCCF).withOpacity(0.3), // Màu hover
+              onTap: () {
+                setState(() {
+                  selectedCategory = 'trash';
+                });
+                Navigator.pop(context);
+                _loadTrashNotes();
+              },
+            ),
+
+
           ],
         ),
       ),
@@ -222,14 +241,14 @@ class _NoteScreenState extends State<NoteScreen> {
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
                   borderSide: BorderSide(
-                    color: Color(0xFFFF5E8A), // Màu viền hồng
+                    color: Color(0xFFFFBCCF), // Màu viền hồng
                     width: 2.0, // Độ dày viền
                   ),
                 ),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
                   borderSide: BorderSide(
-                    color: Color(0xFFFF5E8A), // Màu viền khi không focus (hồng)
+                    color: Color(0xFFFFBCCF), // Màu viền khi không focus (hồng)
                     width: 2.0,
                   ),
                 ),

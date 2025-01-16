@@ -22,14 +22,11 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
     Colors.green,
     Colors.yellow,
     Colors.orange,
-    Colors.purple,
     Colors.cyan,
-    Colors.teal,
-    Colors.brown,
-    Colors.pink,
-    Colors.indigo,
-    Colors.amber,
-    Colors.lime,
+    Colors.pinkAccent,
+    Colors.deepPurpleAccent
+
+
   ];
 
   bool isBold = false;

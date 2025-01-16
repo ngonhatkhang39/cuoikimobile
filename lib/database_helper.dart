@@ -25,7 +25,7 @@ class DatabaseHelper {
     );
   }
   Future<Database> _initDatabase() async {
-    String path = join(await getDatabasesPath(), 'note_app1.db');
+    String path = join(await getDatabasesPath(), 'note_app.db');
     return await openDatabase(
       path,
       version: 2,
@@ -48,7 +48,7 @@ class DatabaseHelper {
           )
         ''');
 
-        await db.insert('categories', {'name': 'Thùng rác'});
+        /*await db.insert('categories', {'name': 'Thùng rác'});*/
       },
       onUpgrade: (db, oldVersion, newVersion) async {
         if (oldVersion < 2) {
